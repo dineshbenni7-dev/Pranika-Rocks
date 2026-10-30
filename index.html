@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#172554"><title>Pranika Rocks | Staff Attendance</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#"><span class="brand-mark">PR</span><span><b>PRANIKA ROCKS</b><small>STAFF ATTENDANCE</small></span></a>
+      <div class="top-actions"><span id="connection" class="status-pill">Not connected</span><button id="logoutBtn" class="btn btn-ghost hidden">Log out</button></div>
+    </header>
+
+    <main>
+      <section id="setupNotice" class="notice hidden">
+        <h2>Connect your database</h2>
+        <p>Add your Supabase project URL and anon key in <code>config.js</code>, then run <code>supabase.sql</code> in the Supabase SQL Editor. Full instructions are in README.md.</p>
+      </section>
+
+      <section id="authView" class="auth-layout">
+        <div class="hero-panel">
+          <span class="eyebrow">SIMPLE • SMART • SECURE</span>
+          <h1>Attendance,<br><em>made simple.</em></h1>
+          <p>One place to manage staff check-ins, check-outs and monthly reports.</p>
+          <div class="hero-points"><span>✓ QR attendance</span><span>✓ Manual admin entry</span><span>✓ Monthly reports</span></div>
+        </div>
+        <div class="auth-card">
+          <div class="tabs"><button class="tab active" data-tab="login">Sign in</button><button class="tab" data-tab="register">Staff registration</button></div>
+          <form id="loginForm" class="form">
+            <h2>Welcome back</h2><p class="muted">Sign in to your attendance account.</p>
+            <label>Email address<input id="loginEmail" type="email" autocomplete="username" required placeholder="you@example.com"></label>
+            <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Your password"></label>
+            <button class="btn btn-primary full" type="submit">Sign in <span>→</span></button>
+          </form>
+          <form id="registerForm" class="form hidden">
+            <h2>Staff registration</h2><p class="muted">Create an account. Admin approval may be required.</p>
+            <label>Full name<input id="regName" required maxlength="80" placeholder="Your name"></label>
+            <label>Email address<input id="regEmail" type="email" required placeholder="you@example.com"></label>
+            <label>Password<input id="regPassword" type="password" minlength="8" required placeholder="At least 8 characters"></label>
+            <button class="btn btn-primary full" type="submit">Create staff account <span>→</span></button>
+          </form>
+          <p id="authMessage" class="message" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="appView" class="hidden">
+        <div class="welcome-row"><div><span class="eyebrow">ATTENDANCE WORKSPACE</span><h1 id="greeting">Dashboard</h1><p class="muted" id="todayLabel"></p></div><span id="roleBadge" class="role-badge">STAFF</span></div>
+        <section id="adminPanel" class="hidden">
+          <div class="stats-grid">
+            <article class="stat-card"><span>Staff registered</span><strong id="staffCount">—</strong><small>Active profiles</small></article>
+            <article class="stat-card"><span>Present today</span><strong id="presentCount">—</strong><small>Unique staff</small></article>
+            <article class="stat-card"><span>Checked out</span><strong id="checkoutCount">—</strong><small>Completed shifts</small></article>
+            <article class="stat-card"><span>Not yet present</span><strong id="absentCount">—</strong><small>Based on active staff</small></article>
+          </div>
+          <div class="dashboard-grid">
+            <article class="panel">
+              <div class="panel-heading"><div><span class="eyebrow">QUICK ACTION</span><h2>Today's QR code</h2></div><button id="newQrBtn" class="btn btn-outline">Generate QR</button></div>
+              <p class="muted">Staff scan this code from their signed-in account to check in or check out.</p>
+              <div id="qrBox" class="qr-box"><span class="muted">Generate today's code to begin.</span></div>
+              <p id="qrStatus" class="small muted"></p>
+            </article>
+            <article class="panel">
+              <div class="panel-heading"><div><span class="eyebrow">ADMIN TOOL</span><h2>Mark attendance</h2></div></div>
+              <form id="manualForm" class="form compact">
+                <label>Staff member<select id="manualStaff" required><option value="">Loading staff…</option></select></label>
+                <label>Action<select id="manualAction"><option value="check_in">Check in</option><option value="check_out">Check out</option></select></label>
+                <label>Note (optional)<input id="manualNote" maxlength="160" placeholder="e.g. Entered manually by admin"></label>
+                <button class="btn btn-primary full" type="submit">Save attendance</button>
+              </form>
+              <p id="manualMessage" class="message"></p>
+            </article>
+          </div>
+          <article class="panel">
+            <div class="panel-heading"><div><span class="eyebrow">TEAM</span><h2>Staff members</h2></div><button id="refreshBtn" class="btn btn-outline">Refresh</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody id="staffTable"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody></table></div>
+          </article>
+        </section>
+
+        <section id="staffPanel" class="hidden">
+          <div class="staff-action-grid">
+            <article class="panel punch-card"><span class="eyebrow">YOUR ATTENDANCE</span><h2 id="staffPunchTitle">Ready to start?</h2><p class="muted" id="staffPunchHint">Scan the QR code displayed by your admin.</p><div class="punch-actions"><button id="scanBtn" class="btn btn-primary">Scan QR code</button><button id="staffRefreshBtn" class="btn btn-outline">Refresh status</button></div><div id="reader" class="reader hidden"></div>
+<div id="verificationPanel" class="verification-panel hidden">
+  <div class="verify-step"><b>Location verification</b><span id="locationResult">Waiting for GPS…</span></div>
+  <div class="verify-step"><b>Live selfie</b><span>Capture a fresh camera photo before submitting attendance.</span></div>
+  <video id="selfieVideo" class="selfie-video hidden" autoplay playsinline></video>
+  <canvas id="selfieCanvas" class="hidden"></canvas>
+  <img id="selfiePreview" class="selfie-preview hidden" alt="Selfie preview">
+  <div class="punch-actions"><button id="captureSelfieBtn" class="btn btn-outline">Open camera</button><button id="submitVerifiedBtn" class="btn btn-primary" disabled>Confirm attendance</button></div>
+  <p class="small muted">The selfie is only previewed and is not uploaded or retained by this starter project.</p>
+</div>
+<div class="passkey-note"><b>Phone Face ID / fingerprint</b><span id="passkeyStatus">Passkeys need a verified server-side WebAuthn setup and are not enabled in this starter build.</span></div>
+<p id="staffMessage" class="message"></p></article>
+            <article class="panel"><span class="eyebrow">TODAY</span><h2 id="staffTodayStatus">No attendance yet</h2><div class="time-row"><div><small>Check in</small><b id="myCheckIn">—</b></div><div><small>Check out</small><b id="myCheckOut">—</b></div></div></article>
+          </div>
+        </section>
+
+        <article class="panel report-panel">
+          <div class="panel-heading"><div><span class="eyebrow">RECORDS</span><h2>Attendance history</h2></div><div class="report-tools"><input id="monthFilter" type="month"><button id="exportBtn" class="btn btn-outline">Export CSV</button></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Staff</th><th>Check in</th><th>Check out</th><th>Method</th><th>Note</th></tr></thead><tbody id="attendanceTable"><tr><td colspan="6" class="muted">Loading records…</td></tr></tbody></table></div>
+          <p class="small muted" id="reportHint">Showing the selected month.</p>
+        </article>
+      </section>
+    </main>
+    <footer>© <span id="year"></span> Pranika Rocks <span>•</span> Staff Attendance Portal</footer>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="app.js"></script>
+</body></html>
